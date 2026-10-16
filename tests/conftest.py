@@ -23,6 +23,34 @@ os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL") or _PLACEHOLDER
 
 
 # ============================================================================
+# Pin the remaining credentials, for the same reason
+# ============================================================================
+# DATABASE_URL is not the only thing load_dotenv() can hand the suite. With a
+# populated .env, importing the app also gives the test process a live Supabase
+# client (core.storage builds one at import whenever config.SUPABASE_URL and
+# SUPABASE_KEY are both set), a usable Gemini key, a usable Resend key, and a
+# Sentry DSN that ships events from the test run to the real project. Clearing
+# them here, before collection, keeps the suite off every real service rather
+# than just off the database.
+#
+# This has to happen at conftest import, not in the session fixture below:
+# config.py snapshots these into module attributes the first time it is
+# imported, which can be during collection, and the code under test reads those
+# attributes rather than os.environ.
+#
+# Empty rather than deleted is deliberate. load_dotenv() does not override a
+# variable that is already set, and the app treats "" as "not configured", so
+# the suite sees what CI sees, where these are simply absent. If a test ever
+# needs real storage it should opt in explicitly, the way the integration tier
+# opts in to a real database with TEST_DATABASE_URL.
+os.environ["SUPABASE_URL"] = ""
+os.environ["SUPABASE_KEY"] = ""
+os.environ["GEMINI_API_KEY"] = ""
+os.environ["RESEND_API_KEY"] = ""
+os.environ["SENTRY_DSN"] = ""
+
+
+# ============================================================================
 # Environment Setup
 # ============================================================================
 

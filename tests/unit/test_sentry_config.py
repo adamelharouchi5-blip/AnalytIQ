@@ -50,22 +50,20 @@ class TestSentryInitialization:
         mock_sentry_sdk.init.assert_called_once()
         mock_app.logger.info.assert_called()
 
-    def test_sentry_init_without_dsn(self, mock_sentry_sdk):
+    def test_sentry_init_without_dsn(self, mock_sentry_sdk, monkeypatch):
         """Test Sentry skips initialization when DSN is not set"""
         import core.sentry as sentry_config
-        import os
 
         mock_app = MagicMock()
         mock_app.logger = MagicMock()
 
-        env = {'FLASK_ENV': 'production'}
-        old_val = os.environ.pop('SENTRY_DSN', None)
-        try:
-            with patch.dict('os.environ', env, clear=False):
-                sentry_config.init_sentry(mock_app)
-        finally:
-            if old_val:
-                os.environ['SENTRY_DSN'] = old_val
+        # monkeypatch, rather than pop-and-restore: the old code restored only
+        # `if old_val`, so the pinned empty DSN was dropped and never put back,
+        # and the next load_dotenv() refilled SENTRY_DSN from the developer's
+        # .env -- re-opening the hole conftest closes.
+        monkeypatch.delenv('SENTRY_DSN', raising=False)
+        monkeypatch.setenv('FLASK_ENV', 'production')
+        sentry_config.init_sentry(mock_app)
 
         mock_sentry_sdk.init.assert_not_called()
         mock_app.logger.warning.assert_called()
