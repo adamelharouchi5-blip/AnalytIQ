@@ -451,7 +451,14 @@ class TestFlywheelEndpoints:
         assert resp.status_code == 403
 
     def test_compute_quality_runs_synchronously_in_test_mode(self, client, monkeypatch):
+        import config
+
         monkeypatch.setattr("core.database.get_db_connection", lambda: MagicMock())
+        # The route branches on config.FEATURE_ASYNC_TASKS, which config reads
+        # from the environment when it is first imported -- that can happen during
+        # collection, before conftest's session fixture sets FEATURE_ASYNC_TASKS.
+        # Pin the attribute so the synchronous branch is exercised either way.
+        monkeypatch.setattr(config, "FEATURE_ASYNC_TASKS", False)
 
         with patch("workers.tasks.compute_exercise_quality_scores", return_value={"exercises_scored": 3}):
             resp = client.post(

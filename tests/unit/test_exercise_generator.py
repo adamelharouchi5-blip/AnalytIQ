@@ -51,17 +51,22 @@ class TestExerciseGeneration:
             assert exercises[0]["title"] == "Load Dataset"
             assert exercises[0]["difficulty"] == "easy"
 
-    def test_generate_exercises_no_api_key(self):
+    def test_generate_exercises_no_api_key(self, monkeypatch):
         """Test error when API key is missing"""
         from services.exercise_generator import generate_exercises_from_pdf_content
 
-        with patch.dict("os.environ", {}, clear=True):
-            with pytest.raises(Exception) as exc_info:
-                generate_exercises_from_pdf_content(
-                    "Sample text",
-                    "Chapter 1"
-                )
-            assert "GEMINI_API_KEY" in str(exc_info.value)
+        # config snapshots GEMINI_API_KEY from the environment at import time and
+        # the generator reads config.GEMINI_API_KEY, so clearing os.environ here
+        # would not change the value it sees. Patch the attribute the code reads;
+        # monkeypatch restores it afterwards.
+        monkeypatch.setattr(config, "GEMINI_API_KEY", None)
+
+        with pytest.raises(Exception) as exc_info:
+            generate_exercises_from_pdf_content(
+                "Sample text",
+                "Chapter 1"
+            )
+        assert "GEMINI_API_KEY" in str(exc_info.value)
 
     def test_generate_exercises_api_error(self):
         """Test handling of API errors"""

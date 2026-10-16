@@ -116,22 +116,25 @@ class TestCacheRedisException:
 class TestSupabaseStorageInit:
     """Cover supabase_storage.py init paths"""
 
-    def test_supabase_no_credentials(self):
+    def test_supabase_no_credentials(self, monkeypatch):
         """Lines 25-26: SUPABASE_URL/KEY not set"""
+        import config
         import core.storage as supa_module
 
-        orig_supabase = supa_module.supabase
-        orig_url = supa_module.SUPABASE_URL
-        orig_key = supa_module.SUPABASE_KEY
+        # core.storage reads config.SUPABASE_URL/KEY at import time, and config
+        # itself snapshots the environment when it is first imported. Patching
+        # os.environ therefore has no effect on what the reload below sees, so
+        # clear the credentials on config instead.
+        monkeypatch.setattr(config, "SUPABASE_URL", "")
+        monkeypatch.setattr(config, "SUPABASE_KEY", "")
 
         try:
-            with patch.dict(os.environ, {"SUPABASE_URL": "", "SUPABASE_KEY": ""}, clear=False):
-                importlib.reload(supa_module)
-                assert supa_module.supabase is None
+            importlib.reload(supa_module)
+            assert supa_module.supabase is None
         finally:
-            # Restore env and reload
-            supa_module.SUPABASE_URL = orig_url
-            supa_module.SUPABASE_KEY = orig_key
+            # Put the real credentials back before reloading, so the module is
+            # left exactly as the rest of the suite expects to find it.
+            monkeypatch.undo()
             importlib.reload(supa_module)
 
     def test_supabase_import_error(self):
