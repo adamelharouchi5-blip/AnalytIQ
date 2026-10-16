@@ -616,7 +616,7 @@ def delete_user(user_id):
         cur = conn.cursor()
 
         # 1. Remove student enrollments in other classes
-        cur.execute("DELETE FROM class_enrollments WHERE user_id = %s", (user_id,))
+        cur.execute("DELETE FROM class_enrollments WHERE student_id = %s", (user_id,))
 
         # 2. Cascade-delete classes the user owns as a professor
         cur.execute("SELECT class_id FROM classes WHERE professor_id = %s", (user_id,))
@@ -625,7 +625,7 @@ def delete_user(user_id):
             cur.execute("DELETE FROM class_enrollments WHERE class_id = %s", (cid,))
             cur.execute("SELECT chapter_id FROM class_chapters WHERE class_id = %s", (cid,))
             for (chid,) in cur.fetchall():
-                cur.execute("DELETE FROM exercises WHERE chapter_id = %s", (chid,))
+                cur.execute("DELETE FROM class_exercises WHERE chapter_id = %s", (chid,))
             cur.execute("DELETE FROM class_chapters WHERE class_id = %s", (cid,))
         cur.execute("DELETE FROM classes WHERE professor_id = %s", (user_id,))
 
